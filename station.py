@@ -6,9 +6,10 @@ F4GOP VHF — programme complet : émission + réception
   - waterfall (cliquer dessus règle la fréquence d'émission)
   - décodage à la fin de chaque période
   - liste des messages ; les messages qui te sont adressés sont en couleur
-  - double-clic sur un message : prépare la réponse au correspondant
-    (indicatif, report d'après son signal, période opposée) et active
-    l'émission
+  - double-clic sur un message : répond au correspondant ; avec le
+    séquençage automatique, le QSO se déroule ensuite tout seul
+    (report, R-report, RR73, 73) et il est enregistré dans le journal
+    ADIF (Documents\\F4GOP-VHF\\journal.adi)
 
 Lancer : python station.py
 """
@@ -24,6 +25,8 @@ from emetteur import Emetteur, sd
 from modem import SOUS_MODES, FS, DEBUT_TX, duree_tx
 from message import hash21
 from decodeur import decoder_periode, PLAGE_DT
+from sequenceur import Sequenceur, _est_locator
+import journal_adif
 
 TAMPON_S = 130                     # secondes d'audio gardées en mémoire
 WF_LARGEUR, WF_HAUTEUR = 640, 170
@@ -117,6 +120,7 @@ class Station(Emetteur):
         self.palette = _palette()
         self.wf = np.zeros((WF_HAUTEUR, WF_LARGEUR), dtype=np.uint8)
         self.niveau_entree = 1e-9
+        self.seq = Sequenceur("", "")
         super().__init__()
         self.title(f"F4GOP VHF — Station  v{emetteur.VERSION}")
         self._construire_reception()
@@ -174,6 +178,27 @@ class Station(Emetteur):
             *self.liste.get_children())).grid(row=4, column=0, sticky="w")
         self.l_dec = ttk.Label(rx, text="")
         self.l_dec.grid(row=4, column=1, columnspan=2, sticky="w")
+
+        qa = ttk.LabelFrame(rx, text="QSO automatique")
+        qa.grid(row=5, column=0, columnspan=3, sticky="ew", pady=4)
+        self.v_auto = tk.BooleanVar(value=self.reglages.get("auto", True))
+        ttk.Checkbutton(qa, text="Séquençage automatique",
+                        variable=self.v_auto).grid(row=0, column=0, sticky="w")
+        self.v_cq_apres = tk.BooleanVar(
+            value=self.reglages.get("cq_apres", False))
+        ttk.Checkbutton(qa, text="Relancer CQ après chaque QSO",
+                        variable=self.v_cq_apres).grid(row=0, column=1,
+                                                       sticky="w")
+        ttk.Button(qa, text="Lancer CQ", command=self.lancer_cq).grid(
+            row=0, column=2, padx=3)
+        ttk.Button(qa, text="Arrêter le QSO", command=self.arreter_qso).grid(
+            row=0, column=3, padx=3)
+        self.l_qso = ttk.Label(qa, text="État : aucun QSO en cours",
+                               foreground="#2060c0")
+        self.l_qso.grid(row=1, column=0, columnspan=4, sticky="w")
+        self.l_nb_qso = ttk.Label(qa, text="", foreground="gray")
+        self.l_nb_qso.grid(row=2, column=0, columnspan=4, sticky="w")
+        self.nb_qso = 0
 
     def _x_de_f(self, f):
         return (f - WF_FMIN) / (WF_FMAX - WF_FMIN) * WF_LARGEUR
@@ -301,6 +326,13 @@ class Station(Emetteur):
             self.liste.see(self.liste.get_children()[-1])
         self.l_dec.configure(
             text=f"{heure} : {len(res)} décodé(s) en {duree:.1f} s")
+        if self.v_auto.get() and self.seq.actif():
+            self._maj_seq()
+            if self.seq.traiter(res):
+                if self.seq.etat != "cq" and self.seq.dx:
+                    # on répond dans la période opposée à celle reçue
+                    self.v_par.set((n + 1) % 2)
+                self._appliquer_seq("réponse reçue")
 
     def _double_clic(self, ev):
         item = self.liste.focus()
@@ -321,6 +353,15 @@ class Station(Emetteur):
         except ValueError:
             pass
         self.v_par.set((n + 1) % 2)            # on répond dans l'autre période
+        if self.v_auto.get():
+            self._maj_seq()
+            if mots[0] == moi:
+                self.seq.reprendre(texte, int(db))
+            else:
+                loc = mots[2] if len(mots) > 2 and _est_locator(mots[2]) else ""
+                self.seq.repondre_a(dx, int(db), loc)
+            self._appliquer_seq("double-clic")
+            return
         if mots[0] == moi and len(mots) == 3:
             # il nous répond : on envoie l'étape suivante du QSO
             fin = mots[2]
@@ -339,8 +380,96 @@ class Station(Emetteur):
         self._activer()
         self.log(f"Réponse préparée : {self.v_msg.get()}")
 
+    # ------------------------------------------------------------ QSO auto
+    def _maj_seq(self):
+        self.seq.moi = self.v_ind.get().strip().upper()
+        self.seq.locator = self.v_loc.get().strip().upper()
+        self.seq.cq_apres_qso = bool(self.v_cq_apres.get())
+
+    def _appliquer_seq(self, raison=""):
+        """Met à jour le message à émettre d'après le séquenceur."""
+        if self.seq.message:
+            if self.seq.message != self.v_msg.get():
+                self.v_msg.set(self.seq.message)
+                self.log(f"Séquenceur : {self.seq.message}"
+                         + (f"  ({raison})" if raison else ""))
+            if not self.emission_active.get():
+                self.emission_active.set(True)
+                self._activer()
+        else:
+            if self.emission_active.get():
+                self.emission_active.set(False)
+                self.log("Séquenceur : fin d'émission"
+                         + (f" ({raison})" if raison else ""))
+        self.dx_courant()
+        self._enregistrer_qsos()
+
+    def dx_courant(self):
+        txt = self.seq.libelle()
+        self.l_qso.configure(text=f"État : {txt}")
+        if self.seq.dx:
+            self.v_dx.set(self.seq.dx)
+
+    def lancer_cq(self):
+        self._maj_seq()
+        if not self.v_auto.get():
+            self._remplir(lambda c, l, d, p: f"CQ {c} {l}")
+            return
+        self.seq.lancer_cq()
+        self._appliquer_seq("CQ")
+
+    def arreter_qso(self):
+        self.seq.arreter()
+        self._appliquer_seq("arrêt demandé")
+
+    def _peut_emettre(self, t):
+        # on attend la fin du décodage pour émettre le bon message
+        if (self.v_auto.get() and self.seq.actif() and self.decodage_en_cours
+                and t < emetteur.RETARD_MAX_TX - 0.1):
+            return False
+        return True
+
+    def _fin_emission(self, interrompue):
+        if interrompue:
+            self.seq.arreter()
+            self.dx_courant()
+            return
+        if self.v_auto.get() and self.seq.actif():
+            self._maj_seq()
+            self.seq.apres_emission()
+            raison = ""
+            if not self.seq.actif():
+                raison = "pas de réponse" if not self.seq.qsos_finis else \
+                    "QSO terminé"
+            self._appliquer_seq(raison)
+
+    def _enregistrer_qsos(self):
+        for q in self.seq.prendre_qsos():
+            freq = None
+            try:
+                if self.poste:
+                    f = self.poste.frequence()
+                    if f:
+                        freq = (f + float(self.v_fa.get())) / 1e6
+            except Exception:
+                pass
+            try:
+                fichier = journal_adif.enregistrer(
+                    q, self.v_ind.get().strip().upper(),
+                    self.v_loc.get().strip().upper(), freq,
+                    sous_mode_tr=self.v_sm.get())
+                self.nb_qso += 1
+                self.l_nb_qso.configure(
+                    text=f"{self.nb_qso} QSO cette session — {fichier}")
+                self.log(f"QSO enregistré : {q['call']} {q['grid']} "
+                         f"envoyé {q['rst_sent']} reçu {q['rst_rcvd']}")
+            except Exception as e:
+                self.log(f"Erreur journal : {e}")
+
     def quitter(self):
         self.reglages["entree_son"] = self.v_entree.get()
+        self.reglages["auto"] = bool(self.v_auto.get())
+        self.reglages["cq_apres"] = bool(self.v_cq_apres.get())
         if self.flux is not None:
             try:
                 self.flux.stop()

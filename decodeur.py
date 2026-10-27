@@ -20,7 +20,6 @@ Méthode :
      phase) puis décodés ; le CRC 14 bits élimine les faux décodages.
 """
 import numpy as np
-from scipy.signal import resample_poly, hilbert
 
 from modem import (SOUS_MODES, NSYM, IDX_DATA, IDX_PIL, SEQ_PIL, _REG,
                    PAS_PILOTE, CODE, DEBUT_TX, FS)
@@ -51,9 +50,17 @@ def _impulsion(spb):
 
 
 def preparer(audio):
-    """Audio 48 kHz réel -> signal analytique complexe à 8 kHz."""
-    x = resample_poly(np.asarray(audio, dtype=float), 1, DECIM)
-    return hilbert(x)
+    """Audio 48 kHz réel -> signal analytique complexe à 8 kHz.
+    Fait en une seule FFT : on garde les fréquences positives sous 4 kHz
+    (filtre parfait, sans repliement) et on revient au temps à 8 kHz."""
+    x = np.asarray(audio, dtype=float)
+    m = x.size // DECIM
+    X = np.fft.rfft(x[:m * DECIM])
+    Z = np.zeros(m, dtype=complex)
+    h = m // 2
+    Z[0] = X[0]
+    Z[1:h] = 2 * X[1:h]
+    return np.fft.ifft(Z) / DECIM
 
 
 def _spectrogramme(x, spb, pas, nfft):

@@ -1,0 +1,57 @@
+
+--- QSO parfait
+  F4GOP : CQ F4GOP IN98QR       
+  G4XYZ : F4GOP G4XYZ IO91WM    
+  F4GOP : G4XYZ F4GOP -12       
+  G4XYZ : F4GOP G4XYZ R-12      
+  F4GOP : G4XYZ F4GOP RR73      
+  G4XYZ : F4GOP G4XYZ 73        
+  journal F4GOP : G4XYZ loc IO91WM envoyé -12 reçu -12
+  journal G4XYZ : F4GOP loc IN98QR envoyé -12 reçu -12
+
+--- le R-report de G4XYZ est perdu une fois
+  F4GOP : CQ F4GOP IN98QR       
+  G4XYZ : F4GOP G4XYZ IO91WM    
+  F4GOP : G4XYZ F4GOP -12       
+  G4XYZ : F4GOP G4XYZ R-12         (perdu)
+  F4GOP : G4XYZ F4GOP -12       
+  G4XYZ : F4GOP G4XYZ R-12      
+  F4GOP : G4XYZ F4GOP RR73      
+  G4XYZ : F4GOP G4XYZ 73        
+  journal F4GOP : G4XYZ loc IO91WM envoyé -12 reçu -12
+  journal G4XYZ : F4GOP loc IN98QR envoyé -12 reçu -12
+
+--- le RR73 de F4GOP est perdu une fois
+  F4GOP : CQ F4GOP IN98QR       
+  G4XYZ : F4GOP G4XYZ IO91WM    
+  F4GOP : G4XYZ F4GOP -12       
+  G4XYZ : F4GOP G4XYZ R-12      
+  F4GOP : G4XYZ F4GOP RR73         (perdu)
+  G4XYZ : F4GOP G4XYZ R-12      
+  F4GOP : G4XYZ F4GOP RR73      
+  G4XYZ : F4GOP G4XYZ 73        
+  journal F4GOP : G4XYZ loc IO91WM envoyé -12 reçu -12
+  journal G4XYZ : F4GOP loc IN98QR envoyé -12 reçu -12
+
+--- G4XYZ disparaît après son appel : abandon
+  F4GOP : CQ F4GOP IN98QR       
+  G4XYZ : F4GOP G4XYZ IO91WM       (perdu)
+  F4GOP : CQ F4GOP IN98QR          (perdu)
+  G4XYZ : F4GOP G4XYZ IO91WM       (perdu)
+  F4GOP : CQ F4GOP IN98QR          (perdu)
+  G4XYZ : F4GOP G4XYZ IO91WM       (perdu)
+  F4GOP : CQ F4GOP IN98QR          (perdu)
+  G4XYZ : F4GOP G4XYZ IO91WM       (perdu)
+  F4GOP : CQ F4GOP IN98QR          (perdu)
+  G4XYZ : F4GOP G4XYZ IO91WM       (perdu)
+  F4GOP : CQ F4GOP IN98QR          (perdu)
+  G4XYZ : F4GOP G4XYZ IO91WM       (perdu)
+  F4GOP : CQ F4GOP IN98QR          (perdu)
+  F4GOP : CQ F4GOP IN98QR          (perdu)
+  F4GOP : CQ F4GOP IN98QR          (perdu)
+  F4GOP : CQ F4GOP IN98QR          (perdu)
+  F4GOP : CQ F4GOP IN98QR       
+  F4GOP : CQ F4GOP IN98QR       
+  F4GOP : CQ F4GOP IN98QR       
+  F4GOP : CQ F4GOP IN98QR       
+  F4GOP : CQ F4GOP IN98QR       

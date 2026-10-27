@@ -105,12 +105,37 @@ Le décodage démarre dès la fin du signal le plus tardif possible
 (14,85 s en R15, 57,5 s en R60), et l'émission peut partir jusqu'à
 1,2 s après le début de période : on a le temps de répondre.
 
-**Prochaines étapes**
-3c. Séquençage automatique complet des QSO, journal ADIF, puis .exe
-    Windows
+**Étape 3c — QSO automatique, journal, .exe (fait)**
+- `sequenceur.py` : déroulement automatique des QSO (CQ → locator →
+  report → R-report → RR73 → 73), reprise si un message est perdu,
+  abandon après 6 émissions sans réponse
+  (`tests/test_sequenceur.py`).
+- `journal_adif.py` : chaque QSO est enregistré dans
+  `Documents\F4GOP-VHF\journal.adi` (bande et fréquence lues sur
+  l'IC-9700). Ce mode étant nouveau, il est noté MODE=MFSK,
+  SUBMODE=F4GOP-VHF : certains logiciels ou LoTW peuvent refuser ce
+  sous-mode inconnu.
+- Test de bout en bout : deux stations complètes ont fait un QSO entier
+  entre elles, avec de vrais signaux bruités à −18 dB, et l'ont
+  chacune enregistré.
+- `.github/workflows/exe-windows.yml` : GitHub construit
+  **F4GOP-VHF.exe** sur Windows à chaque nouvelle version et le publie
+  dans les **Releases**.
 
 ## Utiliser le programme (Windows)
 
+**Le plus simple** : télécharger **F4GOP-VHF.exe** dans la rubrique
+*Releases* du dépôt (colonne de droite) et double-cliquer. Rien à
+installer.
+
+Pour un QSO :
+1. Choisir le port CI-V, la carte son de sortie et l'entrée son
+   (« USB Audio CODEC »), le sous-mode R15 ou R60.
+2. Cocher « Séquençage automatique ».
+3. Soit **Lancer CQ**, soit **double-cliquer** sur un CQ reçu : le QSO
+   se déroule tout seul et s'enregistre dans le journal.
+
+Depuis les sources :
 ```
 pip install -r requirements.txt
 python station.py          # émission + réception

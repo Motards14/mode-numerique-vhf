@@ -28,7 +28,7 @@ try:
 except Exception:                         # pas de carte son (tests)
     sd = None
 
-VERSION = "0.2"
+VERSION = "1.0"
 RETARD_MAX_TX = 1.2        # secondes : départ d'émission le plus tardif
 FICHIER_REGLAGES = os.path.join(os.path.expanduser("~"), ".f4gop_vhf.json")
 REGLAGES_DEFAUT = {
@@ -285,13 +285,20 @@ class Emetteur(tk.Tk):
         # laisse le temps de décoder la période précédente et de répondre
         if (self.emission_active.get() and not self.en_cours
                 and n % 2 == self.v_par.get() and t < RETARD_MAX_TX
-                and n != self.derniere_periode):
+                and n != self.derniere_periode and self._peut_emettre(t)):
             self.derniere_periode = n
             self.periodes_tx.add((self.v_sm.get(), n))
             self._lancer(n * periode)
         elif not self.en_cours and self.emission_active.get():
             self._etat("En attente de la prochaine période d'émission")
         self.after(50, self._horloge)
+
+    def _peut_emettre(self, t):
+        """Permet à la réception de retarder le départ (décodage en cours)."""
+        return True
+
+    def _fin_emission(self, interrompue):
+        """Appelé après chaque émission (dans le fil principal)."""
 
     def _tic(self, n, t, periode):
         """Appelé toutes les 50 ms (n = numéro de période, t = secondes
@@ -348,6 +355,8 @@ class Emetteur(tk.Tk):
                 pass
             self.en_cours = False
             self._etat("Réception", "#2060c0")
+            interrompue = self.arret.is_set()
+            self.after(0, lambda: self._fin_emission(interrompue))
 
     def enregistrer_wav(self):
         if not self._verifier_message():
