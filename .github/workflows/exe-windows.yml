@@ -4,6 +4,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Numéro de version à publier (ex. v1.0.0)"
+        default: "v1.0.0"
+        required: true
 
 permissions:
   contents: write
@@ -43,9 +48,12 @@ jobs:
           path: dist/F4GOP-VHF.exe
 
       - name: Publier dans les Releases
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          name: F4GOP VHF ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          target_commitish: ${{ github.sha }}
           files: dist/F4GOP-VHF.exe
           body: |
             F4GOP VHF — mode numérique cohérent pour la VHF/UHF (Icom IC-9700).
