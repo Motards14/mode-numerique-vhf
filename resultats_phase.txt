@@ -1,0 +1,14 @@
+
+=== Trame de 10.4 s — seuil de décodage (50 %), SNR dans 2500 Hz ===
+8-FSK non cohérent type FT8 (synchro comprise) :  -18.6 dB   <- référence
+BPSK cohérent, GPSDO, tropo stable        (Tc = 1000 s) :  -22.7 dB   (gain +4.1 dB, fenêtre ±128)
+BPSK cohérent, bon TCXO                   (Tc = 30 s)   :  -22.5 dB   (gain +3.9 dB, fenêtre trame)
+BPSK cohérent, oscillateur moyen          (Tc = 3 s)    :  -22.1 dB   (gain +3.5 dB, fenêtre ±32)
+BPSK cohérent, très instable / scatter    (Tc = 0,5 s)  :  -20.6 dB   (gain +2.0 dB, fenêtre ±8)
+
+=== Trame de 60 s — seuil de décodage (50 %), SNR dans 2500 Hz ===
+8-FSK non cohérent type FT8 (synchro comprise) :  -26.1 dB   <- référence
+BPSK cohérent, GPSDO, tropo stable        (Tc = 1000 s) :  -30.2 dB   (gain +4.1 dB, fenêtre ±64)
+BPSK cohérent, bon TCXO                   (Tc = 30 s)   :  -30.0 dB   (gain +3.9 dB, fenêtre ±32)
+BPSK cohérent, oscillateur moyen          (Tc = 3 s)    :  -28.4 dB   (gain +2.2 dB, fenêtre ±8)
+BPSK cohérent, très instable / scatter    (Tc = 0,5 s)  :  -23.3 dB   (gain -2.8 dB, fenêtre ±2)
