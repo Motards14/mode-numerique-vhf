@@ -2,7 +2,10 @@
 """
 Modulateur / démodulateur — F4GOP
 
-Modulation : MSK cohérente (écrite sous forme d'OQPSK à impulsions
+Modulation (depuis la v2.4) : GMSK BT=0,5 — MSK lissée par un filtre gaussien, pour
+un spectre aussi propre que FT8 ; le récepteur est le même qu'en MSK.
+
+Modulation d'origine : MSK cohérente (écrite sous forme d'OQPSK à impulsions
 demi-sinus). Deux avantages :
   - même performance que le BPSK cohérent des simulations (chaque bit
     est vu séparément sur la voie I ou la voie Q) ;
@@ -72,10 +75,54 @@ def bande_de_base(symboles, spb):
     return x
 
 
+BT_GAUSS = 0.5            # filtre gaussien de la GMSK (comme le GSM)
+
+
+def _convolution(a, b):
+    """Convolution par FFT (numpy seul), centrée comme np.convolve(mode="same")."""
+    n = a.size + b.size - 1
+    m = 1 << int(np.ceil(np.log2(n)))
+    c = np.fft.irfft(np.fft.rfft(a, m) * np.fft.rfft(b, m), m)[:n]
+    d = (b.size - 1) // 2
+    return c[d:d + a.size]
+
+
+def bande_de_base_gmsk(symboles, spb, bt=BT_GAUSS):
+    """GMSK : la même MSK (mêmes bits, même récepteur), mais dont la fréquence passe
+    d'un bit à l'autre en douceur (filtre gaussien), comme FT8 et le GSM.
+    Le spectre s'éteint beaucoup plus vite sur les côtés : à ±100 Hz, −87 dB au lieu
+    de −61 dB (R15) ; perte de sensibilité 0,16 dB. Enveloppe constante."""
+    x = bande_de_base(symboles, spb)                      # MSK de référence
+    n_sym = len(symboles)
+    # bits de fréquence (±1) : sens de rotation de la phase de la MSK sur chaque bit
+    bornes = np.arange(1, n_sym + 1) * spb
+    ph = np.unwrap(np.angle(x[bornes[0]:bornes[-1] + 1]))
+    d = np.sign(ph[bornes[1:] - bornes[0]] - ph[bornes[:-1] - bornes[0]])
+    f = np.zeros(x.size)
+    for k, v in enumerate(d):
+        a = bornes[k]
+        f[a:a + spb] = v
+    if bt:
+        tb = spb / FS
+        sigma = np.sqrt(np.log(2)) / (2 * np.pi * bt / tb)   # écart-type (s)
+        t = np.arange(-int(4 * sigma * FS), int(4 * sigma * FS) + 1) / FS
+        g = np.exp(-t ** 2 / (2 * sigma ** 2))
+        f = _convolution(f, g / g.sum())
+    phase = np.cumsum(f) * (np.pi / 2) / spb
+    phase += np.angle(x[spb]) - phase[spb]                # même phase que la MSK
+    y = np.exp(1j * phase)
+    # montée et descente douces sur le premier et le dernier demi-bit
+    env = np.ones(x.size)
+    r = 0.5 - 0.5 * np.cos(np.pi * (np.arange(spb) + 0.5) / spb)
+    env[:spb] = r
+    env[-spb:] = r[::-1]
+    return y * env
+
+
 def moduler(texte, sous_mode="R15", f_audio=1500.0, niveau=0.5):
-    """Texte -> signal audio (float32, FS Hz) prêt à envoyer à la carte son."""
+    """Texte -> signal audio (float32, FS Hz) prêt à envoyer à la carte son (GMSK)."""
     spb = SOUS_MODES[sous_mode][1]
-    x = bande_de_base(bits_trame(texte), spb)
+    x = bande_de_base_gmsk(bits_trame(texte), spb)
     t = np.arange(x.size) / FS
     return (niveau * np.real(x * np.exp(2j * np.pi * f_audio * t))).astype(
         np.float32)

@@ -37,7 +37,7 @@ try:
 except Exception:                                  # pas de carte son (tests)
     sd = None
 
-VERSION = "2.3"
+VERSION = "2.4"
 RETARD_MAX_TX = 1.2           # départ d'émission le plus tardif (s)
 TAMPON_S = 130                # secondes d'audio gardées en mémoire
 CASC_FMIN, CASC_FMAX = 200.0, 2800.0
@@ -1149,6 +1149,10 @@ class Application(tk.Tk):
                 db = 10 * np.log10(ligne + 1e-20)
                 ref = np.median(db)
                 val = np.clip((db - ref + 2) * float(self.v_contraste.get()), 0, 255)
+                if self.en_cours:
+                    # pendant notre émission, le récepteur entend notre propre signal à un
+                    # niveau énorme : on ne le dessine pas (comme WSJT-X)
+                    val = np.zeros_like(val)
                 self.casc = np.roll(self.casc, 1, axis=0)
                 self.casc[0] = val.astype(np.uint8)
                 pal = self.degrade

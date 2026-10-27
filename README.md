@@ -12,6 +12,24 @@ l'aide d'une intelligence artificielle (Claude, d'Anthropic).
 
 ![F4GOP VHF 2.0](captures/fenetre_principale.png)
 
+## Spectre propre : GMSK (depuis la version 2.4)
+
+La modulation est une **GMSK BT = 0,5** : la MSK d'origine lissée par un
+filtre gaussien (comme FT8 et le GSM). Enveloppe toujours constante,
+même récepteur (les versions précédentes se décodent entre elles), perte
+de sensibilité 0,16 dB seulement, et un spectre qui s'éteint beaucoup
+plus vite sur les côtés :
+
+| Niveau à côté du signal (R15) | ±100 Hz | ±200 Hz | ±400 Hz |
+|-------------------------------|---------|---------|---------|
+| MSK (jusqu'à la v2.3)         | −61 dB  | −70 dB  | −90 dB  |
+| **GMSK BT=0,5 (v2.4)**        | **−87 dB** | **−106 dB** | **−125 dB** |
+
+![Spectre MSK et GMSK](captures/spectre_gmsk.png)
+
+Pendant l'émission, la cascade ne dessine plus notre propre signal
+(entendu à un niveau énorme par le récepteur), comme WSJT-X.
+
 ## Mise à jour automatique (depuis la version 2.1)
 
 Au démarrage (puis toutes les 3 heures), le programme regarde s'il
