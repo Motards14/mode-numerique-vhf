@@ -142,6 +142,13 @@ python station.py          # émission + réception
 ```
 (`emetteur.py` seul reste disponible pour des essais d'émission.)
 
+**Port COM** : le câble USB de l'IC-9700 crée deux ports COM (pilote
+Silicon Labs CP210x) ; choisir celui marqué **« Enhanced »**. L'état de
+la liaison s'affiche sous la liste (« CI-V OK — 144.1740 MHz »). Si le
+PTT par CI-V ne marche pas, on peut choisir **PTT par RTS ou DTR** (régler
+alors *USB SEND* sur le poste). Depuis la version 1.1, un port qui ne
+répond pas ne peut plus bloquer le programme.
+
 Réglages de l'IC-9700 : mode **USB-D**, menu *Connectors* :
 CI-V USB Port = *Unlink from [REMOTE]*, CI-V USB Baud Rate = 115200,
 CI-V Address = A2h, DATA MOD = USB. L'horloge du PC doit être à

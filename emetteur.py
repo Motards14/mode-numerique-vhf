@@ -21,20 +21,20 @@ import numpy as np
 
 from message import coder_message, ErreurMessage
 from modem import moduler, duree_tx, SOUS_MODES, FS, DEBUT_TX
-from radio import IC9700, ports_disponibles
+from radio import LiaisonRadio, ports_disponibles, port_conseille, METHODES_PTT
 
 try:
     import sounddevice as sd
 except Exception:                         # pas de carte son (tests)
     sd = None
 
-VERSION = "1.0"
+VERSION = "1.1"
 RETARD_MAX_TX = 1.2        # secondes : départ d'émission le plus tardif
 FICHIER_REGLAGES = os.path.join(os.path.expanduser("~"), ".f4gop_vhf.json")
 REGLAGES_DEFAUT = {
     "indicatif": "F4GOP", "locator": "IN98QR", "port": "",
     "carte_son": "", "f_audio": 1500, "sous_mode": "R15", "parite": 0,
-    "niveau": 0.5, "report": -12,
+    "niveau": 0.5, "report": -12, "ptt": "CI-V",
 }
 
 
@@ -68,13 +68,14 @@ class Emetteur(tk.Tk):
                 self.reglages.update(json.load(f))
         except Exception:
             pass
-        self.poste = None
+        self.radio = LiaisonRadio()
         self.emission_active = tk.BooleanVar(value=False)
         self.en_cours = False
         self.derniere_periode = None
         self.periodes_tx = set()
         self.arret = threading.Event()
         self._construire()
+        self._configurer_radio()
         self.protocol("WM_DELETE_WINDOW", self.quitter)
         self.after(100, self._horloge)
 
@@ -94,15 +95,27 @@ class Emetteur(tk.Tk):
 
         ma = ttk.LabelFrame(self, text="Matériel (IC-9700)")
         ma.grid(row=1, column=0, sticky="ew", **pad)
-        ttk.Label(ma, text="Port CI-V").grid(row=0, column=0, sticky="w")
-        self.v_port = tk.StringVar(value=r["port"])
-        self.cb_port = ttk.Combobox(ma, textvariable=self.v_port, width=12,
-                                    values=ports_disponibles())
-        self.cb_port.grid(row=0, column=1, sticky="w")
+        ttk.Label(ma, text="Port COM").grid(row=0, column=0, sticky="w")
+        self.v_port_lib = tk.StringVar()
+        self.cb_port = ttk.Combobox(ma, textvariable=self.v_port_lib,
+                                    width=48, state="readonly")
+        self.cb_port.grid(row=0, column=1, columnspan=2, sticky="w")
+        self.cb_port.bind("<<ComboboxSelected>>",
+                          lambda e: self._configurer_radio())
+        ttk.Button(ma, text="Actualiser", command=self._lister_ports).grid(
+            row=0, column=3, sticky="w")
+        ttk.Label(ma, text="PTT par").grid(row=3, column=0, sticky="w")
+        self.v_ptt = tk.StringVar(value=r.get("ptt", "CI-V"))
+        cbp = ttk.Combobox(ma, textvariable=self.v_ptt, values=METHODES_PTT,
+                           width=6, state="readonly")
+        cbp.grid(row=3, column=1, sticky="w")
+        cbp.bind("<<ComboboxSelected>>", lambda e: self._configurer_radio())
         ttk.Button(ma, text="Tester PTT (2 s)",
-                   command=self.tester_ptt).grid(row=0, column=2, **pad)
-        self.l_freq = ttk.Label(ma, text="")
-        self.l_freq.grid(row=0, column=3)
+                   command=self.tester_ptt).grid(row=3, column=2, sticky="w")
+        self.l_freq = ttk.Label(ma, text="", foreground="#2060c0")
+        self.l_freq.grid(row=4, column=0, columnspan=4, sticky="w")
+        self._ports = []
+        self._lister_ports(r["port"])
         ttk.Label(ma, text="Carte son").grid(row=1, column=0, sticky="w")
         self.sorties = sorties_audio()
         noms = [n for _, n in self.sorties]
@@ -211,15 +224,23 @@ class Emetteur(tk.Tk):
                                                      foreground=couleur))
 
     # ------------------------------------------------------------ matériel
-    def _poste(self):
-        port = self.v_port.get().strip()
-        if not port:
-            return None
-        if self.poste is None or self.poste.ser.port != port:
-            if self.poste:
-                self.poste.fermer()
-            self.poste = IC9700(port)
-        return self.poste
+    def _lister_ports(self, prefere=None):
+        self._ports = ports_disponibles()
+        libelles = [f"{d} — {desc}" for d, desc in self._ports]
+        self.cb_port.configure(values=libelles)
+        actuel = prefere or self.port_choisi() or port_conseille(self._ports)
+        for (d, _), lib in zip(self._ports, libelles):
+            if d == actuel:
+                self.v_port_lib.set(lib)
+                break
+        else:
+            self.v_port_lib.set("")
+
+    def port_choisi(self):
+        return self.v_port_lib.get().split(" — ")[0].strip()
+
+    def _configurer_radio(self):
+        self.radio.configurer(self.port_choisi(), self.v_ptt.get())
 
     def _index_son(self):
         for i, n in self.sorties:
@@ -228,26 +249,19 @@ class Emetteur(tk.Tk):
         return None
 
     def tester_ptt(self):
-        try:
-            p = self._poste()
-            if p is None:
-                messagebox.showwarning("PTT", "Choisis d'abord le port CI-V.")
-                return
-            f = p.frequence()
-            if f:
-                self.l_freq.configure(text=f"{f / 1e6:.6f} MHz")
-            p.ptt(True)
-            self.log("Test PTT : émission 2 s (sans modulation)")
-            self.after(2000, lambda: self._ptt_off())
-        except Exception as e:
-            messagebox.showerror("PTT", str(e))
+        if not self.port_choisi():
+            messagebox.showwarning("PTT", "Choisis d'abord le port COM.")
+            return
+        if not self.radio.connecte:
+            messagebox.showwarning("PTT", f"Port non disponible :\n"
+                                   f"{self.radio.etat}")
+            return
+        self.radio.ptt(True)
+        self.log("Test PTT : émission 2 s (sans modulation)")
+        self.after(2000, self._ptt_off)
 
     def _ptt_off(self):
-        try:
-            if self.poste:
-                self.poste.ptt(False)
-        except Exception as e:
-            self.log(f"Erreur PTT : {e}")
+        self.radio.ptt(False)
 
     # ------------------------------------------------------------ émission
     def _verifier_message(self):
@@ -275,6 +289,7 @@ class Emetteur(tk.Tk):
         maintenant = time.time()
         periode = SOUS_MODES[self.v_sm.get()][0]
         n, t = position_periode(maintenant, periode)
+        self.l_freq.configure(text=f"Poste : {self.radio.etat}")
         self.l_heure.configure(
             text=time.strftime("%H:%M:%S UTC", time.gmtime(maintenant))
             + f"   période {'paire' if n % 2 == 0 else 'impaire'}"
@@ -320,11 +335,8 @@ class Emetteur(tk.Tk):
                          args=(audio, texte, debut_periode), daemon=True).start()
 
     def _emettre(self, audio, texte, debut_periode):
-        poste = None
         try:
-            poste = self._poste()
-            if poste:
-                poste.ptt(True)
+            self.radio.ptt(True)
             attente = debut_periode + DEBUT_TX - time.time()
             if attente > 0:
                 time.sleep(attente)
@@ -348,11 +360,7 @@ class Emetteur(tk.Tk):
             self.after(0, lambda: (self.log(msg),
                                    self.emission_active.set(False)))
         finally:
-            try:
-                if poste:
-                    poste.ptt(False)
-            except Exception:
-                pass
+            self.radio.ptt(False)
             self.en_cours = False
             self._etat("Réception", "#2060c0")
             interrompue = self.arret.is_set()
@@ -376,7 +384,8 @@ class Emetteur(tk.Tk):
         try:
             self.reglages.update({
             "indicatif": self.v_ind.get(), "locator": self.v_loc.get(),
-            "port": self.v_port.get(), "carte_son": self.v_son.get(),
+            "port": self.port_choisi(), "ptt": self.v_ptt.get(),
+            "carte_son": self.v_son.get(),
             "f_audio": int(self.v_fa.get()), "sous_mode": self.v_sm.get(),
             "parite": int(self.v_par.get()), "niveau": float(self.v_niv.get()),
             "report": int(self.v_rep.get())})
@@ -387,8 +396,7 @@ class Emetteur(tk.Tk):
                 json.dump(self.reglages, f, indent=1)
         except Exception:
             pass
-        if self.poste:
-            self.poste.fermer()
+        self.radio.fermer()
         self.destroy()
 
 

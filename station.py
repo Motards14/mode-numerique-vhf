@@ -446,13 +446,9 @@ class Station(Emetteur):
     def _enregistrer_qsos(self):
         for q in self.seq.prendre_qsos():
             freq = None
-            try:
-                if self.poste:
-                    f = self.poste.frequence()
-                    if f:
-                        freq = (f + float(self.v_fa.get())) / 1e6
-            except Exception:
-                pass
+            f = self.radio.freq_hz
+            if f:
+                freq = (f + float(self.v_fa.get())) / 1e6
             try:
                 fichier = journal_adif.enregistrer(
                     q, self.v_ind.get().strip().upper(),
