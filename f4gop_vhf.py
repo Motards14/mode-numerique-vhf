@@ -37,7 +37,7 @@ try:
 except Exception:                                  # pas de carte son (tests)
     sd = None
 
-VERSION = "2.2"
+VERSION = "2.3"
 RETARD_MAX_TX = 1.2           # départ d'émission le plus tardif (s)
 TAMPON_S = 130                # secondes d'audio gardées en mémoire
 CASC_FMIN, CASC_FMAX = 200.0, 2800.0
@@ -46,7 +46,7 @@ FICHIER_REGLAGES = os.path.join(os.path.expanduser("~"), ".f4gop_vhf.json")
 REGLAGES_DEFAUT = {
     "indicatif": "F4GOP", "locator": "IN98QR", "sous_mode": "R15", "parite": 0,
     "f_audio": 1500, "niveau": 0.5, "entree_son": "", "sortie_son": "",
-    "auto": True, "cq_apres": False, "max_rep": 6, "max_cq": 40,
+    "auto": True, "cq_apres": False, "max_rep": 6, "max_cq": 10,
     "adif_mode": "MFSK", "adif_sous_mode": "F4GOP-VHF", "fichier_adif": journal_adif.FICHIER,
     "contraste": 12, "radio": None, "verif_maj": True,
 }
@@ -60,6 +60,9 @@ def charger_reglages():
             r.update(json.load(f))
     except Exception:
         pass
+    if r.get("max_cq") == 40 and not r.get("max_cq_v23"):
+        r["max_cq"] = 10                   # ancienne valeur par défaut (40 CQ = 20 min en R15)
+    r["max_cq_v23"] = True
     if not isinstance(r.get("radio"), dict):
         # reprise des réglages de la version 1 (port COM + PTT CI-V/RTS/DTR de l'IC-9700)
         rc = dict(radio.DEFAULTS, rig="icom:IC-9700", baud=115200, ptt="CAT")
@@ -720,7 +723,14 @@ class Application(tk.Tk):
         self._maj_tx()
 
     def basculer_tx(self):
-        self.activer_tx(not self.emission_active)
+        if self.emission_active:
+            # TX coupé à la main : la séquence s'arrête aussi (sinon elle relancerait l'émission
+            # à la fin du message en cours)
+            self.seq.arreter()
+            self.activer_tx(False)
+            self.log("Émission coupée")
+        else:
+            self.activer_tx(True)
 
     def envoyer_manuel(self):
         texte = self.v_msg.get().strip().upper()
@@ -733,6 +743,7 @@ class Application(tk.Tk):
 
     def stop(self):
         self.emission_active = False
+        self.seq.arreter()
         self.tune = False
         self.arret.set()
         if sd is not None:
@@ -941,8 +952,10 @@ class Application(tk.Tk):
                 self.ui(self._fin_emission, interrompue)
 
     def _fin_emission(self, interrompue):
-        if interrompue:
+        if interrompue or not self.emission_active:
+            # Stop TX, ou TX coupé pendant l'émission : on ne relance rien
             self.seq.arreter()
+            self._enregistrer_qsos()
             return
         if self.cfg["auto"] and self.seq.actif():
             self._maj_seq()

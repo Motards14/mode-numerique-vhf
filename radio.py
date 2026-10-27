@@ -256,7 +256,10 @@ def open_port(cfg, port=None):
         elif hs == "hardware":
             ser.xonxoff, ser.rtscts = False, True
         for line, on in lines.items():
-            setattr(ser, line, on)
+            try:
+                setattr(ser, line, on)
+            except OSError:
+                pass        # port virtuel sans lignes DTR/RTS : l'état a déjà été donné à l'ouverture
     except Exception:
         ser.close()
         raise

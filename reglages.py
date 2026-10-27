@@ -192,8 +192,8 @@ class FenetreReglages(tk.Toplevel):
             p, from_=2, to=20, width=5, textvariable=self.v["max_rep"]),
             "avant d'abandonner un QSO")
         self._ligne(f, "Nombre de CQ maximum", lambda p: ttk.Spinbox(
-            p, from_=5, to=200, width=5, textvariable=self.v["max_cq"]),
-            "puis l'émission s'arrête")
+            p, from_=1, to=200, width=5, textvariable=self.v["max_cq"]),
+            "puis l'émission s'arrête (1 = un seul CQ)")
         self._ligne(f, "Fréquence audio TX (Hz)", lambda p: ttk.Spinbox(
             p, from_=300, to=2700, increment=10, width=6, textvariable=self.v["f_audio"]))
 
