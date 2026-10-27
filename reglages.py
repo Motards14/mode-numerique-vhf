@@ -37,6 +37,7 @@ class FenetreReglages(tk.Toplevel):
             "fichier_adif": tk.StringVar(value=cfg["fichier_adif"]),
             "adif_mode": tk.StringVar(value=cfg["adif_mode"]),
             "adif_sous_mode": tk.StringVar(value=cfg["adif_sous_mode"]),
+            "verif_maj": tk.BooleanVar(value=bool(cfg.get("verif_maj", True))),
         }
 
         # ---- navigation à gauche
@@ -113,6 +114,22 @@ class FenetreReglages(tk.Toplevel):
         tk.Label(f, text="Indicatifs « standard » de 3 à 6 caractères (pas encore de /P ni de "
                          "préfixe F/ON4ABC).", bg=C["fond"], fg=C["faible"],
                  font=police(9)).pack(anchor="w", pady=(14, 0))
+        from f4gop_vhf import VERSION
+        cadre = tk.Frame(f, bg=C["panneau"], highlightthickness=1, highlightbackground=C["bord"])
+        cadre.pack(fill="x", pady=(24, 0))
+        tk.Label(cadre, text="MISE À JOUR AUTOMATIQUE", bg=C["panneau"], fg=C["faible"],
+                 font=police(8, True)).pack(anchor="w", padx=12, pady=(10, 2))
+        tk.Label(cadre, text=f"Version installée : {VERSION}", bg=C["panneau"], fg=C["texte"],
+                 font=police(10)).pack(anchor="w", padx=12)
+        l = tk.Frame(cadre, bg=C["panneau"])
+        l.pack(fill="x", padx=12, pady=(6, 10))
+        tk.Checkbutton(l, text="Vérifier au démarrage (puis toutes les 3 heures)",
+                       variable=self.v["verif_maj"], bg=C["panneau"], fg=C["texte"],
+                       selectcolor=C["champ"], activebackground=C["panneau"],
+                       activeforeground=C["texte"], highlightthickness=0, bd=0,
+                       font=police(10)).pack(side="left")
+        Pilule(l, "Vérifier maintenant", lambda: self.app.verifier_maj(silencieux=False),
+               fond_parent=C["panneau"]).pack(side="right")
 
     def _page_poste(self, f):
         self._titre(f, "Poste radio", "Tous les postes connus de Hamlib, plus les Icom VHF/UHF "
@@ -254,6 +271,7 @@ class FenetreReglages(tk.Toplevel):
                 "fichier_adif": self.v["fichier_adif"].get().strip(),
                 "adif_mode": self.v["adif_mode"].get().strip() or "MFSK",
                 "adif_sous_mode": self.v["adif_sous_mode"].get().strip(),
+                "verif_maj": bool(self.v["verif_maj"].get()),
             }
         except (ValueError, tk.TclError):
             messagebox.showerror("Réglages", "Un nombre n'est pas valide.", parent=self)

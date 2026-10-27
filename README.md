@@ -12,6 +12,19 @@ l'aide d'une intelligence artificielle (Claude, d'Anthropic).
 
 ![F4GOP VHF 2.0](captures/fenetre_principale.png)
 
+## Mise à jour automatique (depuis la version 2.1)
+
+Au démarrage (puis toutes les 3 heures), le programme regarde s'il
+existe une version plus récente dans les *Releases* de ce dépôt. Si oui,
+un **bandeau orange** apparaît : un clic télécharge le nouvel .exe,
+vérifie sa taille et son empreinte SHA-256, remplace l'ancien et
+redémarre le programme. Réglages → Station : case « Vérifier au
+démarrage » et bouton « Vérifier maintenant ». Module `updater.py` repris
+de HFImage F4GOP (`tests/test_mise_a_jour.py` : test complet avec un
+faux serveur GitHub).
+
+![Bandeau de mise à jour](captures/bandeau_maj.png)
+
 ## Version 2.0 — interface moderne
 
 - **Fenêtre sombre** : barre du haut (poste et fréquence lus en CAT,

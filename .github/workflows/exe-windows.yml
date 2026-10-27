@@ -7,7 +7,7 @@ on:
     inputs:
       version:
         description: "Numéro de version à publier (ex. v1.0.0)"
-        default: "v2.0.0"
+        default: "v2.1.0"
         required: true
 
 permissions:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Tests rapides (messages, séquenceur, modulation)
         run: |
-          python -c "import message, modem, decodeur, sequenceur, journal_adif, radio, radiodlg, liaison, reglages, theme_vhf, f4gop_vhf; print('imports OK')"
+          python -c "import message, modem, decodeur, sequenceur, journal_adif, radio, radiodlg, liaison, reglages, theme_vhf, updater, f4gop_vhf; print('imports OK')"
           python tests/test_sequenceur.py
           python -c "from modem import moduler, demoduler; a = moduler('CQ F4GOP IN98QR', 'R15', 1500); print(demoduler(a, 'R15', 1500))"
 
@@ -39,7 +39,7 @@ jobs:
           pyinstaller --noconfirm --onefile --windowed
           --name F4GOP-VHF
           --exclude-module scipy --exclude-module matplotlib
-          --hidden-import radiodlg --hidden-import reglages
+          --hidden-import radiodlg --hidden-import reglages --hidden-import updater
           f4gop_vhf.py
 
       - name: Garder le .exe (onglet Actions)

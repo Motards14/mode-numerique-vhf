@@ -22,7 +22,9 @@ from tkinter import ttk, messagebox
 import numpy as np
 
 import journal_adif
+import netssl
 import radio
+import updater
 from decodeur import decoder_periode, PLAGE_DT
 from liaison import LiaisonRadio
 from message import coder_message, ErreurMessage, hash21
@@ -35,7 +37,7 @@ try:
 except Exception:                                  # pas de carte son (tests)
     sd = None
 
-VERSION = "2.0"
+VERSION = "2.1"
 RETARD_MAX_TX = 1.2           # départ d'émission le plus tardif (s)
 TAMPON_S = 130                # secondes d'audio gardées en mémoire
 CASC_FMIN, CASC_FMAX = 200.0, 2800.0
@@ -46,7 +48,7 @@ REGLAGES_DEFAUT = {
     "f_audio": 1500, "niveau": 0.5, "entree_son": "", "sortie_son": "",
     "auto": True, "cq_apres": False, "max_rep": 6, "max_cq": 40,
     "adif_mode": "MFSK", "adif_sous_mode": "F4GOP-VHF", "fichier_adif": journal_adif.FICHIER,
-    "contraste": 12, "radio": None,
+    "contraste": 12, "radio": None, "verif_maj": True,
 }
 
 
@@ -216,6 +218,12 @@ class Application(tk.Tk):
         self.casc_h = 150
         self.casc = np.zeros((self.casc_h, self.casc_l), dtype=np.uint8)
         self.degrade = degrade_cascade()
+        self.upd_info = None
+        self.upd_occupe = False
+        try:
+            updater.cleanup()                  # efface l'ancien exe après une mise à jour
+        except Exception:
+            pass
 
         self.v_msg = tk.StringVar()
         self.v_dx = tk.StringVar()
@@ -229,11 +237,23 @@ class Application(tk.Tk):
         self.after(250, self._rafraichir_cascade)
         self.after(400, self._rafraichir_etat)
         self.after(5000, self._rafraichir_ages)
+        if self.cfg.get("verif_maj", True):
+            self.after(3000, lambda: self.verifier_maj(silencieux=True))
         self.log(f"F4GOP VHF {VERSION} démarré — poste : {radio.describe(self.cfg['radio'])}")
 
     # ================================================================== interface
     def _construire(self):
         self._barre_haut()
+        self.bandeau = tk.Frame(self, bg=C["ambre"], cursor="hand2")
+        self.l_bandeau = tk.Label(self.bandeau, text="", bg=C["ambre"], fg="#1a1204",
+                                  font=police(10, True), cursor="hand2", pady=5)
+        self.l_bandeau.pack(side="left", padx=12)
+        self.x_bandeau = tk.Label(self.bandeau, text="✕", bg=C["ambre"], fg="#1a1204",
+                                  font=police(10, True), cursor="hand2", padx=10)
+        self.x_bandeau.pack(side="right")
+        for w in (self.bandeau, self.l_bandeau):
+            w.bind("<Button-1>", lambda e: self._clic_maj())
+        self.x_bandeau.bind("<Button-1>", lambda e: self.bandeau.pack_forget())
         self._barre_frequence()
         corps = tk.Frame(self, bg=C["fond"])
         corps.pack(fill="both", expand=True, padx=10, pady=(0, 6))
@@ -325,6 +345,7 @@ class Application(tk.Tk):
     def _barre_frequence(self):
         b = tk.Frame(self, bg=C["fond"])
         b.pack(fill="x", padx=10, pady=8)
+        self._barre_freq = b
         fz = tk.Frame(b, bg=C["panneau"], highlightthickness=1, highlightbackground=C["bord"])
         fz.pack(side="left")
         self.l_freq = tk.Label(fz, text="---.--- ---", bg=C["panneau"], fg=C["accent"],
@@ -1136,7 +1157,7 @@ class Application(tk.Tk):
         nom = e.get("model") or e["label"].split(" — ")[0]
         self.l_poste.configure(text=nom[:26])
         ok = r.ok
-        self.l_poste_etat.configure(text=("● " if ok else "● ") + (r.etat[:48] or ""),
+        self.l_poste_etat.configure(text=("● " if ok else "● ") + (r.etat[:40] or ""),
                                     fg=C["vert"] if ok else C["rouge"])
         if r.freq_hz:
             mhz = r.freq_hz / 1e6
@@ -1152,6 +1173,103 @@ class Application(tk.Tk):
         self.l_etat_d.configure(text=f"Entrée : {court(self.cfg['entree_son'])}   ·   "
                                      f"Sortie : {court(self.cfg['sortie_son'])}")
         self.after(400, self._rafraichir_etat)
+
+    # ================================================================== mise à jour automatique
+    def verifier_maj(self, silencieux=False):
+        """Cherche une version plus récente sur GitHub (en tâche de fond)."""
+        if silencieux:
+            # nouvelle vérification dans 3 h (programme laissé ouvert toute la journée)
+            if getattr(self, "_job_maj", None):
+                try:
+                    self.after_cancel(self._job_maj)
+                except tk.TclError:
+                    pass
+            self._job_maj = self.after(3 * 3600 * 1000, lambda: self.verifier_maj(True))
+
+        def tache():
+            try:
+                info = updater.check()
+            except Exception as e:
+                if silencieux:
+                    self.ui(self.log, f"Mise à jour : vérification impossible ({e})")
+                else:
+                    self.ui(messagebox.showinfo, "F4GOP VHF", "Impossible de vérifier les mises à "
+                            f"jour :\n{netssl.explain(e)}")
+                return
+            self.ui(self._maj_trouvee, info, silencieux)
+        threading.Thread(target=tache, daemon=True).start()
+
+    def _maj_trouvee(self, info, silencieux):
+        if updater.newer(info["version"], VERSION):
+            self.upd_info = info
+            self._bandeau(f"Nouvelle version {info['version']} disponible — cliquez ici pour "
+                          f"mettre à jour (version actuelle : {VERSION})")
+            self.log(f"Nouvelle version {info['version']} disponible sur GitHub.")
+        elif not silencieux:
+            messagebox.showinfo("F4GOP VHF", f"Tu as la dernière version ({VERSION}).", parent=self)
+
+    def _bandeau(self, texte, couleur=None):
+        couleur = couleur or C["ambre"]
+        for w in (self.bandeau, self.l_bandeau, self.x_bandeau):
+            w.configure(bg=couleur)
+        self.l_bandeau.configure(text=texte)
+        if not self.bandeau.winfo_ismapped():
+            self.bandeau.pack(fill="x", before=self._barre_freq)
+
+    def _clic_maj(self):
+        info = self.upd_info
+        if info is None or self.upd_occupe:
+            return
+        if not updater.frozen() or not info.get("url"):
+            # lancé depuis les sources (ou pas d'exe joint) : on ouvre la page de la version
+            import webbrowser
+            webbrowser.open(info.get("page") or updater.PAGE_URL)
+            return
+        if self.en_cours:
+            messagebox.showinfo("F4GOP VHF", "Attends la fin de l'émission pour mettre à jour.",
+                                parent=self)
+            return
+        notes = (info.get("notes") or "")[:900]
+        taille = f" ({info['size'] / 1e6:.0f} Mo)" if info.get("size") else ""
+        if not messagebox.askyesno("F4GOP VHF", f"Mettre à jour F4GOP VHF {VERSION} → "
+                                   f"{info['version']}{taille} ?\n\n{notes}\n\n"
+                                   "Le programme redémarrera tout seul.", parent=self):
+            return
+        self.upd_occupe = True
+        self.activer_tx(False)
+        self._bandeau("Téléchargement de la mise à jour… 0 %", "#ffd166")
+
+        def avance(f):
+            self.ui(self.l_bandeau.configure, {"text": f"Téléchargement de la mise à jour… "
+                                                       f"{int(f * 100)} %"})
+
+        def tache():
+            try:
+                chemin = updater.download(info, avance)
+            except Exception as e:
+                self.ui(self._maj_echec, e)
+                return
+            self.ui(self._maj_installer, chemin)
+        threading.Thread(target=tache, daemon=True).start()
+
+    def _maj_echec(self, e):
+        self.upd_occupe = False
+        self.log(f"Mise à jour impossible : {e}")
+        self._bandeau(f"Mise à jour impossible : {e} — cliquez pour réessayer", C["rouge"])
+
+    def _maj_installer(self, chemin):
+        self._bandeau("Mise à jour téléchargée et vérifiée — redémarrage…", C["vert"])
+        self.update_idletasks()
+        try:
+            lance = updater.install(chemin)
+        except Exception as e:
+            self._maj_echec(e)
+            return
+        if lance:
+            self.log("Mise à jour installée, redémarrage.")
+            self.after(500, self.quitter)
+        else:
+            self.upd_occupe = False
 
     # ================================================================== réglages
     def ouvrir_reglages(self, onglet=None):
