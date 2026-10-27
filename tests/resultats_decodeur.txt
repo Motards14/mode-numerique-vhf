@@ -1,0 +1,27 @@
+
+R15 : 4 stations émises
+       -18 dB  dt +0.00 s    812.0 Hz  CQ F4GOP IN98QR
+       -21 dB  dt +0.30 s   1500.4 Hz  F4ABC F4GOP -12
+       -23 dB  dt -0.20 s   1530.0 Hz  G4XYZ F4GOP R-08
+       -27 dB  dt +0.80 s   2210.7 Hz  CQ ON4ABC JO20
+   décodées en 1.1 s :
+       -17 dB  dt +0.00 s    812.0 Hz  CQ F4GOP IN98QR
+       -21 dB  dt +0.30 s   1500.4 Hz  F4ABC F4GOP -12
+       -23 dB  dt -0.20 s   1530.0 Hz  G4XYZ F4GOP R-08
+
+R60 : 4 stations émises
+       -24 dB  dt +0.00 s    812.0 Hz  CQ F4GOP IN98QR
+       -27 dB  dt +0.30 s   1500.4 Hz  F4ABC F4GOP -12
+       -29 dB  dt -0.20 s   1530.0 Hz  G4XYZ F4GOP R-08
+       -33 dB  dt +0.80 s   2210.7 Hz  CQ ON4ABC JO20
+   décodées en 4.1 s :
+       -25 dB  dt +0.01 s    812.0 Hz  CQ F4GOP IN98QR
+       -28 dB  dt +0.29 s   1500.4 Hz  F4ABC F4GOP -12
+R15 seuil : -21 dB -> 12/12 décodés
+R15 seuil : -22 dB -> 12/12 décodés
+R15 seuil : -23 dB -> 11/12 décodés
+R15 seuil : -24 dB -> 5/12 décodés
+R60 seuil : -28 dB -> 6/6 décodés
+R60 seuil : -29 dB -> 5/6 décodés
+R60 seuil : -30 dB -> 3/6 décodés
+bruit seul, 30 périodes R15 : 0 faux décodage(s)

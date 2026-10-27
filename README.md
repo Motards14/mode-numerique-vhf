@@ -83,16 +83,39 @@ code pour la référence de type FT8 :
 
 ![Spectre R15](exemples/spectre_R15.png)
 
-**Prochaines étapes**
-3b. Réception : recherche des signaux dans le waterfall, décodage
-3c. Séquençage automatique des QSO, puis .exe Windows
+**Étape 3b — Réception (fait)**
+- `decodeur.py` : recherche des signaux sans rien connaître d'avance
+  (fréquence 200–2800 Hz, décalage d'horloge −0,5 à +1,5 s) en
+  additionnant les pilotes de façon cohérente, puis démodulation fine
+  et décodage de tous les candidats en un seul passage. Le CRC 14 bits
+  élimine les faux décodages.
+- `station.py` : **programme complet** émission + réception —
+  waterfall (clic = fréquence d'émission), liste des messages (en
+  rouge ceux qui te sont adressés, en vert les CQ), double-clic pour
+  répondre (locator, report, R-report, RR73, 73 selon l'étape du QSO).
+- `tests/test_decodeur.py` : test sur périodes synthétiques
+  (résultats dans `tests/resultats_decodeur.txt`).
 
-## Utiliser l'émetteur (Windows)
+| Sous-mode | Décodage à 50 %  | Temps de décodage | Faux décodages (bruit seul) |
+|-----------|------------------|-------------------|-----------------------------|
+| R15       | ≈ −23,5 dB       | 0,6 à 1,1 s       | 0 sur 30 périodes           |
+| R60       | ≈ −30 dB         | 1,8 à 4 s         |                             |
+
+Le décodage démarre dès la fin du signal le plus tardif possible
+(14,85 s en R15, 57,5 s en R60), et l'émission peut partir jusqu'à
+1,2 s après le début de période : on a le temps de répondre.
+
+**Prochaines étapes**
+3c. Séquençage automatique complet des QSO, journal ADIF, puis .exe
+    Windows
+
+## Utiliser le programme (Windows)
 
 ```
 pip install -r requirements.txt
-python emetteur.py
+python station.py          # émission + réception
 ```
+(`emetteur.py` seul reste disponible pour des essais d'émission.)
 
 Réglages de l'IC-9700 : mode **USB-D**, menu *Connectors* :
 CI-V USB Port = *Unlink from [REMOTE]*, CI-V USB Baud Rate = 115200,

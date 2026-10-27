@@ -28,7 +28,8 @@ try:
 except Exception:                         # pas de carte son (tests)
     sd = None
 
-VERSION = "0.1"
+VERSION = "0.2"
+RETARD_MAX_TX = 1.2        # secondes : départ d'émission le plus tardif
 FICHIER_REGLAGES = os.path.join(os.path.expanduser("~"), ".f4gop_vhf.json")
 REGLAGES_DEFAUT = {
     "indicatif": "F4GOP", "locator": "IN98QR", "port": "",
@@ -71,6 +72,7 @@ class Emetteur(tk.Tk):
         self.emission_active = tk.BooleanVar(value=False)
         self.en_cours = False
         self.derniere_periode = None
+        self.periodes_tx = set()
         self.arret = threading.Event()
         self._construire()
         self.protocol("WM_DELETE_WINDOW", self.quitter)
@@ -277,14 +279,23 @@ class Emetteur(tk.Tk):
             text=time.strftime("%H:%M:%S UTC", time.gmtime(maintenant))
             + f"   période {'paire' if n % 2 == 0 else 'impaire'}"
             + f"   {periode - t:4.1f} s restantes")
+        self._tic(n, t, periode)
+        # départ normal à 0,5 s ; départ en retard accepté jusqu'à 1,2 s
+        # (le correspondant tolère jusqu'à +1,5 s de décalage), ce qui
+        # laisse le temps de décoder la période précédente et de répondre
         if (self.emission_active.get() and not self.en_cours
-                and n % 2 == self.v_par.get() and t < DEBUT_TX - 0.15
+                and n % 2 == self.v_par.get() and t < RETARD_MAX_TX
                 and n != self.derniere_periode):
             self.derniere_periode = n
+            self.periodes_tx.add((self.v_sm.get(), n))
             self._lancer(n * periode)
         elif not self.en_cours and self.emission_active.get():
             self._etat("En attente de la prochaine période d'émission")
         self.after(50, self._horloge)
+
+    def _tic(self, n, t, periode):
+        """Appelé toutes les 50 ms (n = numéro de période, t = secondes
+        écoulées) ; utilisé par la partie réception."""
 
     def _lancer(self, debut_periode):
         texte = self.v_msg.get().strip().upper()
