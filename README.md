@@ -43,8 +43,24 @@ mode non cohérent dans ce cas.
 
 Résultats détaillés : `resultats_phase.txt`.
 
+**Étape 2 — Code correcteur (fait)**
+- `ldpc.py` : LDPC (194, 91) construit par PEG, décodage somme-produit.
+  À cette petite taille de message il fait *moins bien* que le code
+  convolutif (FT8 doit lui ajouter un décodeur OSD très lourd). Gardé
+  pour de futurs messages longs.
+- `convolutif.py` : codes convolutifs K=7, 9, 11. Le **K=11** gagne
+  environ 0,6 dB sur le K=7 et se place à **0,3 dB de la limite
+  théorique** pour 91 bits (approximation normale, −24,8 dB en 10,4 s).
+
+Résultats avec phase réelle et code K=11 (`resultats_K11.txt`), même
+code pour la référence de type FT8 :
+
+| Trame  | Type FT8 | IC-9700 TCXO interne | IC-9700 + GPSDO |
+|--------|----------|----------------------|-----------------|
+| 10,4 s | −18,9 dB | **−23,0 dB** (+4,1)  | −22,9 dB (+4,0) |
+| 60 s   | −26,6 dB | **−30,2 dB** (+3,6)  | −30,6 dB (+4,0) |
+
 **Prochaines étapes**
-2. Code correcteur LDPC moderne (+1 à 2 dB attendus)
 3. Programme Windows : audio USB et commande CI-V pour Icom IC-9700,
    waterfall, séquençage automatique des QSO
 
@@ -53,4 +69,5 @@ Résultats détaillés : `resultats_phase.txt`.
 ```
 pip install numpy scipy
 python simulateur.py
+python simulateur_phase.py 11      # K = 7, 9 ou 11
 ```

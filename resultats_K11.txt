@@ -1,0 +1,11 @@
+Code convolutif K=11, même code pour tous les modes
+
+=== Trame de 10.4 s — seuil de décodage (50 %), SNR dans 2500 Hz ===
+8-FSK non cohérent type FT8 (synchro comprise) :  -18.9 dB   <- référence
+BPSK cohérent, GPSDO, tropo stable        (Tc = 1000 s) :  -22.9 dB   (gain +4.0 dB, fenêtre ±32)
+BPSK cohérent, bon TCXO                   (Tc = 30 s)   :  -23.0 dB   (gain +4.1 dB, fenêtre ±64)
+
+=== Trame de 60 s — seuil de décodage (50 %), SNR dans 2500 Hz ===
+8-FSK non cohérent type FT8 (synchro comprise) :  -26.6 dB   <- référence
+BPSK cohérent, GPSDO, tropo stable        (Tc = 1000 s) :  -30.6 dB   (gain +4.0 dB, fenêtre ±64)
+BPSK cohérent, bon TCXO                   (Tc = 30 s)   :  -30.2 dB   (gain +3.6 dB, fenêtre ±32)
