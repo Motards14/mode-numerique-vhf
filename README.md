@@ -45,7 +45,7 @@ Résultats détaillés : `resultats_phase.txt`.
 
 **Prochaines étapes**
 2. Code correcteur LDPC moderne (+1 à 2 dB attendus)
-3. Programme Windows : audio et CAT pour Kenwood TS-890 / TS-990,
+3. Programme Windows : audio USB et commande CI-V pour Icom IC-9700,
    waterfall, séquençage automatique des QSO
 
 ## Lancer le simulateur
