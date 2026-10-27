@@ -60,14 +60,52 @@ code pour la référence de type FT8 :
 | 10,4 s | −18,9 dB | **−23,0 dB** (+4,1)  | −22,9 dB (+4,0) |
 | 60 s   | −26,6 dB | **−30,2 dB** (+3,6)  | −30,6 dB (+4,0) |
 
+**Étape 3a — Émission (fait)**
+- `message.py` : messages sur 77 bits + CRC-14. Types : standard
+  (« CQ F4GOP IN98 », « F4ABC F4GOP -12 », R-report, RRR, RR73, 73),
+  **locator 6 caractères** (« CQ F4GOP IN98QR ») et texte libre
+  (13 caractères).
+- `modem.py` : modulation **MSK cohérente** (OQPSK demi-sinus) :
+  mêmes performances que le BPSK des simulations, mais **enveloppe
+  constante** comme FT8 → l'émetteur sort toute sa puissance.
+  Code K=11, 1 pilote tous les 4 bits, 272 bits émis.
+
+| Sous-mode | Période | Émission | Largeur | Seuil mesuré (boucle audio) |
+|-----------|---------|----------|---------|-----------------------------|
+| R15       | 15 s    | 12,8 s   | ~25 Hz  | ≈ −24 dB                    |
+| R60       | 60 s    | 55,5 s   | ~6 Hz   | ≈ −30 dB                    |
+
+- `radio.py` : PTT et lecture de fréquence de l'IC-9700 par CI-V.
+- `emetteur.py` : fenêtre d'émission (station, port CI-V, carte son,
+  sous-mode, période paire/impaire, boutons CQ / Locator / Report /
+  R+report / RR73 / 73, arrêt immédiat, export WAV).
+- `exemples/` : un CQ en WAV et son spectre.
+
+![Spectre R15](exemples/spectre_R15.png)
+
 **Prochaines étapes**
-3. Programme Windows : audio USB et commande CI-V pour Icom IC-9700,
-   waterfall, séquençage automatique des QSO
+3b. Réception : recherche des signaux dans le waterfall, décodage
+3c. Séquençage automatique des QSO, puis .exe Windows
+
+## Utiliser l'émetteur (Windows)
+
+```
+pip install -r requirements.txt
+python emetteur.py
+```
+
+Réglages de l'IC-9700 : mode **USB-D**, menu *Connectors* :
+CI-V USB Port = *Unlink from [REMOTE]*, CI-V USB Baud Rate = 115200,
+CI-V Address = A2h, DATA MOD = USB. L'horloge du PC doit être à
+l'heure exacte (synchronisation Internet), comme pour FT8.
+
+Premiers essais : bouton « Tester PTT » sur charge fictive, puis
+niveau audio réglé pour que l'ALC ne bouge pas.
 
 ## Lancer le simulateur
 
 ```
-pip install numpy scipy
+pip install numpy scipy matplotlib
 python simulateur.py
 python simulateur_phase.py 11      # K = 7, 9 ou 11
 ```
