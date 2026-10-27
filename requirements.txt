@@ -1,4 +1,6 @@
 numpy
-scipy
 sounddevice
 pyserial
+certifi
+scipy        # seulement pour les simulateurs
+matplotlib   # seulement pour les graphiques d'exemple

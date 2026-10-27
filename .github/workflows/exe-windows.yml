@@ -7,7 +7,7 @@ on:
     inputs:
       version:
         description: "Numéro de version à publier (ex. v1.0.0)"
-        default: "v1.0.0"
+        default: "v2.0.0"
         required: true
 
 permissions:
@@ -26,11 +26,11 @@ jobs:
       - name: Installer les bibliothèques
         run: |
           python -m pip install --upgrade pip
-          pip install numpy sounddevice pyserial pyinstaller
+          pip install numpy sounddevice pyserial certifi pyinstaller
 
       - name: Tests rapides (messages, séquenceur, modulation)
         run: |
-          python -c "import message, modem, decodeur, sequenceur, journal_adif, radio; print('imports OK')"
+          python -c "import message, modem, decodeur, sequenceur, journal_adif, radio, radiodlg, liaison, reglages, theme_vhf, f4gop_vhf; print('imports OK')"
           python tests/test_sequenceur.py
           python -c "from modem import moduler, demoduler; a = moduler('CQ F4GOP IN98QR', 'R15', 1500); print(demoduler(a, 'R15', 1500))"
 
@@ -39,7 +39,8 @@ jobs:
           pyinstaller --noconfirm --onefile --windowed
           --name F4GOP-VHF
           --exclude-module scipy --exclude-module matplotlib
-          station.py
+          --hidden-import radiodlg --hidden-import reglages
+          f4gop_vhf.py
 
       - name: Garder le .exe (onglet Actions)
         uses: actions/upload-artifact@v4
@@ -58,4 +59,4 @@ jobs:
           body: |
             F4GOP VHF — mode numérique cohérent pour la VHF/UHF (Icom IC-9700).
             Télécharger F4GOP-VHF.exe ci-dessous et double-cliquer : rien à installer.
-            Réglages de l'IC-9700 et mode d'emploi : voir le README du dépôt.
+            Réglages du poste (IC-9700 et tous les postes VHF/UHF) et mode d'emploi : voir le README du dépôt.

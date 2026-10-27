@@ -6,8 +6,43 @@ mais conçu pour décoder des signaux plus faibles grâce à la
 stables en phase que les trajets HF).
 
 Auteur : Denis F4GOP (IN98QR) — f4gop.denis@gmail.com
+Licence : **GNU GPL v3** (voir `LICENSE`). Le module « Poste radio » est
+repris de **HFImage F4GOP** (même auteur, GPL v3). Programme écrit avec
+l'aide d'une intelligence artificielle (Claude, d'Anthropic).
 
-## État du projet
+![F4GOP VHF 2.0](captures/fenetre_principale.png)
+
+## Version 2.0 — interface moderne
+
+- **Fenêtre sombre** : barre du haut (poste et fréquence lus en CAT,
+  RX/TX, avancement de la période, heure UTC, sous-mode), cascade avec
+  les indicatifs décodés affichés à leur fréquence, commandes d'émission
+  (Appel CQ, TX, Stop TX, Tune, messages rapides), tableau **Stations**
+  (locator, distance, cap, SNR, âge) et **Activité bande** (filtres
+  Tous / CQ / Pour moi). Double-clic = appeler.
+- **Fenêtre Réglages** : Station, Poste radio, Audio, QSO automatique,
+  Journal ADIF.
+- **Tous les postes** : la fenêtre « Poste radio » de HFImage (tous les
+  postes Hamlib, Kenwood en direct, FLRig, OmniRig, SunSDR TCI,
+  commandes personnalisées ; PTT par CAT, DTR, RTS ou VOX), avec en plus
+  la case **« Postes VHF/UHF seulement »** et les **Icom VHF/UHF en CI-V
+  direct**, sans rien installer : IC-9700, IC-705, IC-905, IC-9100,
+  IC-7100, IC-910H, IC-7000, IC-706MkIIG, IC-746PRO, IC-821H, IC-820H,
+  IC-970, IC-475, IC-275. Les autres (FT-991, FT-847, FT-817/818,
+  FT-857/897, TS-2000, TS-790…) passent par Hamlib, installé en un clic
+  depuis la fenêtre.
+- **Le port COM ne peut plus bloquer le programme** : tout passe par un
+  fil séparé (`liaison.py`).
+- Test de bout en bout **en temps réel dans la vraie fenêtre**
+  (`tests/test_qso_reel.py`) : CQ décodé à −17 dB, QSO automatique
+  complet avec un faux IC-9700, enregistré dans le journal avec la bande
+  et la fréquence lues en CAT.
+
+| Réglages | Poste radio |
+|---|---|
+| ![Réglages](captures/reglages.png) | ![Poste radio](captures/poste_radio.png) |
+
+## Historique du projet
 
 **Étape 0 — Simulateur (fait)**
 `simulateur.py` compare les modulations à message égal (77 bits utiles
@@ -75,10 +110,8 @@ code pour la référence de type FT8 :
 | R15       | 15 s    | 12,8 s   | ~25 Hz  | ≈ −24 dB                    |
 | R60       | 60 s    | 55,5 s   | ~6 Hz   | ≈ −30 dB                    |
 
-- `radio.py` : PTT et lecture de fréquence de l'IC-9700 par CI-V.
-- `emetteur.py` : fenêtre d'émission (station, port CI-V, carte son,
-  sous-mode, période paire/impaire, boutons CQ / Locator / Report /
-  R+report / RR73 / 73, arrêt immédiat, export WAV).
+- (v1) PTT et fréquence de l'IC-9700 par CI-V, fenêtre d'émission —
+  remplacés en v2 par `radio.py` / `liaison.py` et `f4gop_vhf.py`.
 - `exemples/` : un CQ en WAV et son spectre.
 
 ![Spectre R15](exemples/spectre_R15.png)
@@ -89,7 +122,7 @@ code pour la référence de type FT8 :
   additionnant les pilotes de façon cohérente, puis démodulation fine
   et décodage de tous les candidats en un seul passage. Le CRC 14 bits
   élimine les faux décodages.
-- `station.py` : **programme complet** émission + réception —
+- (v1) programme complet émission + réception —
   waterfall (clic = fréquence d'émission), liste des messages (en
   rouge ceux qui te sont adressés, en vert les CQ), double-clic pour
   répondre (locator, report, R-report, RR73, 73 selon l'étape du QSO).
@@ -129,33 +162,30 @@ Le décodage démarre dès la fin du signal le plus tardif possible
 installer.
 
 Pour un QSO :
-1. Choisir le port CI-V, la carte son de sortie et l'entrée son
-   (« USB Audio CODEC »), le sous-mode R15 ou R60.
-2. Cocher « Séquençage automatique ».
-3. Soit **Lancer CQ**, soit **double-cliquer** sur un CQ reçu : le QSO
+1. **Réglages → Station** : indicatif et locator.
+2. **Réglages → Poste radio → Choisir et régler le poste…** : par
+   exemple « Icom IC-9700 — CI-V direct », le port COM marqué
+   « Enhanced », 115200 bauds, PTT par CAT ; **Tester le CAT** puis
+   **Tester le PTT** (sur charge fictive).
+3. **Réglages → Audio** : « USB Audio CODEC » en entrée et en sortie.
+4. Choisir le sous-mode **R15** ou **R60** en haut, puis **Appel CQ**, ou
+   **double-clic** sur un CQ reçu : avec « Séquence auto : OUI », le QSO
    se déroule tout seul et s'enregistre dans le journal.
 
 Depuis les sources :
 ```
 pip install -r requirements.txt
-python station.py          # émission + réception
+python f4gop_vhf.py
 ```
-(`emetteur.py` seul reste disponible pour des essais d'émission.)
 
-**Port COM** : le câble USB de l'IC-9700 crée deux ports COM (pilote
-Silicon Labs CP210x) ; choisir celui marqué **« Enhanced »**. L'état de
-la liaison s'affiche sous la liste (« CI-V OK — 144.1740 MHz »). Si le
-PTT par CI-V ne marche pas, on peut choisir **PTT par RTS ou DTR** (régler
-alors *USB SEND* sur le poste). Depuis la version 1.1, un port qui ne
-répond pas ne peut plus bloquer le programme.
+Réglages de l'IC-9700 : mode **USB-D** (ou case « Mode : Data / Pkt »
+de la fenêtre Poste radio pour que le programme le mette tout seul),
+menu *Connectors* : CI-V USB Port = *Unlink from [REMOTE]*, CI-V USB
+Baud Rate = 115200, CI-V Address = A2h, DATA MOD = USB. L'horloge du PC
+doit être à l'heure exacte (synchronisation Internet), comme pour FT8.
 
-Réglages de l'IC-9700 : mode **USB-D**, menu *Connectors* :
-CI-V USB Port = *Unlink from [REMOTE]*, CI-V USB Baud Rate = 115200,
-CI-V Address = A2h, DATA MOD = USB. L'horloge du PC doit être à
-l'heure exacte (synchronisation Internet), comme pour FT8.
-
-Premiers essais : bouton « Tester PTT » sur charge fictive, puis
-niveau audio réglé pour que l'ALC ne bouge pas.
+Premiers essais : « Tester le PTT » sur charge fictive, puis niveau de
+sortie réglé pour que l'ALC ne bouge pas.
 
 ## Lancer le simulateur
 
