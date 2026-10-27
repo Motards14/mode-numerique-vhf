@@ -12,6 +12,16 @@ l'aide d'une intelligence artificielle (Claude, d'Anthropic).
 
 ![F4GOP VHF 2.0](captures/fenetre_principale.png)
 
+## Repères TX rouge / RX vert, comme WSJT-X (depuis la version 2.6)
+
+- **Clic** dans la cascade : fréquence de **réception** (trait vert).
+- **Maj + clic** : fréquence d'**émission** (trait rouge).
+- **Ctrl + clic** ou **clic droit** : les deux à la fois.
+- **Double-clic sur une station** : le RX se place sur elle (le TX ne
+  bouge pas) ; boutons **TX ← RX** et **RX ← TX** pour les aligner.
+- Filtre **« Sur RX »** dans Activité bande : seulement les messages
+  reçus sur la fréquence RX.
+
 ## Spectre propre : GMSK (depuis la version 2.4)
 
 La modulation est une **GMSK BT = 0,5** : la MSK d'origine lissée par un

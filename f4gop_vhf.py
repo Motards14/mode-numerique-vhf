@@ -37,7 +37,7 @@ try:
 except Exception:                                  # pas de carte son (tests)
     sd = None
 
-VERSION = "2.5"
+VERSION = "2.6"
 RETARD_MAX_TX = 1.2           # départ d'émission le plus tardif (s)
 TAMPON_S = 130                # secondes d'audio gardées en mémoire
 CASC_FMIN, CASC_FMAX = 200.0, 2800.0
@@ -45,7 +45,7 @@ FICHIER_REGLAGES = os.path.join(os.path.expanduser("~"), ".f4gop_vhf.json")
 
 REGLAGES_DEFAUT = {
     "indicatif": "F4GOP", "locator": "IN98QR", "sous_mode": "R15", "parite": 0,
-    "f_audio": 1500, "niveau": 0.5, "entree_son": "", "sortie_son": "",
+    "f_audio": 1500, "f_rx": 1500, "niveau": 0.5, "entree_son": "", "sortie_son": "",
     "auto": True, "cq_apres": False, "max_rep": 6, "max_cq": 10,
     "adif_mode": "MFSK", "adif_sous_mode": "F4GOP-VHF", "fichier_adif": journal_adif.FICHIER,
     "contraste": 12, "radio": None, "verif_maj": True,
@@ -329,7 +329,7 @@ class Application(tk.Tk):
 
         self.l_sync = tk.Label(z, text="● en attente", bg=C["barre"], fg=C["doux"],
                                font=police(9))
-        self.l_sync.pack(side="left", padx=10)
+        self.l_sync.pack(side="left", padx=6)
 
         self.p_reglages = Pilule(z, "⚙  Réglages", lambda: self.ouvrir_reglages(),
                                  fond_parent=C["barre"], hauteur=30)
@@ -360,7 +360,7 @@ class Application(tk.Tk):
         self.l_bande.pack(side="left", padx=12)
 
         tx = tk.Frame(b, bg=C["fond"])
-        tx.pack(side="left", padx=14)
+        tx.pack(side="left", padx=10)
         tk.Label(tx, text="ÉMISSION EN", bg=C["fond"], fg=C["faible"], font=police(8)).pack(
             anchor="w")
         ligne = tk.Frame(tx, bg=C["fond"])
@@ -374,7 +374,7 @@ class Application(tk.Tk):
         self._maj_parite()
 
         au = tk.Frame(b, bg=C["fond"])
-        au.pack(side="left", padx=10)
+        au.pack(side="left", padx=6)
         tk.Label(au, text="QSO", bg=C["fond"], fg=C["faible"], font=police(8)).pack(anchor="w")
         self.p_auto = Pilule(au, "", self.basculer_auto, hauteur=28)
         self.p_auto.pack(anchor="w")
@@ -382,15 +382,24 @@ class Application(tk.Tk):
 
         fa = tk.Frame(b, bg=C["fond"])
         fa.pack(side="left", padx=10)
-        tk.Label(fa, text="FRÉQUENCE AUDIO TX", bg=C["fond"], fg=C["faible"],
+        tk.Label(fa, text="FRÉQUENCES AUDIO", bg=C["fond"], fg=C["faible"],
                  font=police(8)).pack(anchor="w")
-        lf = tk.Frame(fa, bg=C["fond"])
-        lf.pack(anchor="w")
-        Pilule(lf, "−", lambda: self.decaler_fa(-10), largeur=30, hauteur=28).pack(side="left")
-        self.l_fa = tk.Label(lf, text="", bg=C["fond"], fg=C["texte"], width=8,
-                             font=police(11, True, mono=True))
-        self.l_fa.pack(side="left")
-        Pilule(lf, "+", lambda: self.decaler_fa(10), largeur=30, hauteur=28).pack(side="left")
+        self.l_fa = {}
+        for cle, nom, coul, pas_fn, copie in (
+                ("f_audio", "TX", C["rouge"], self.decaler_fa, ("TX ← RX", self.tx_sur_rx)),
+                ("f_rx", "RX", C["vert"], self.decaler_rx, ("RX ← TX", self.rx_sur_tx))):
+            lf = tk.Frame(fa, bg=C["fond"])
+            lf.pack(anchor="w", pady=1)
+            tk.Label(lf, text=nom, bg=C["fond"], fg=coul, width=3, anchor="w",
+                     font=police(10, True)).pack(side="left")
+            Pilule(lf, "−", lambda f=pas_fn: f(-10), largeur=26, hauteur=22).pack(side="left")
+            l = tk.Label(lf, text="", bg=C["fond"], fg=coul, width=8,
+                         font=police(10, True, mono=True))
+            l.pack(side="left")
+            Pilule(lf, "+", lambda f=pas_fn: f(10), largeur=26, hauteur=22).pack(side="left")
+            Pilule(lf, copie[0], copie[1], hauteur=22, gras=False, taille=9).pack(
+                side="left", padx=(6, 0))
+            self.l_fa[cle] = l
         self._maj_fa()
 
         nv = tk.Frame(b, bg=C["fond"])
@@ -401,7 +410,7 @@ class Application(tk.Tk):
         l1.pack(anchor="w")
         tk.Label(l1, text="Entrée", bg=C["fond"], fg=C["doux"], width=6, anchor="w",
                  font=police(9)).pack(side="left")
-        self.cv_niv = tk.Canvas(l1, width=140, height=8, bg=C["pilule"], highlightthickness=0)
+        self.cv_niv = tk.Canvas(l1, width=100, height=8, bg=C["pilule"], highlightthickness=0)
         self.cv_niv.pack(side="left", padx=4)
         self.l_niv = tk.Label(l1, text="", bg=C["fond"], fg=C["doux"], width=9,
                               font=police(9, mono=True))
@@ -410,7 +419,7 @@ class Application(tk.Tk):
         l2.pack(anchor="w", pady=(2, 0))
         tk.Label(l2, text="Sortie", bg=C["fond"], fg=C["doux"], width=6, anchor="w",
                  font=police(9)).pack(side="left")
-        curseur(l2, self.v_niv, 0.02, 1.0, 140, lambda v: self._maj_niv_tx()).pack(
+        curseur(l2, self.v_niv, 0.02, 1.0, 100, lambda v: self._maj_niv_tx()).pack(
             side="left", padx=4)
         self.l_niv_tx = tk.Label(l2, text="", bg=C["fond"], fg=C["doux"], width=9,
                                  font=police(9, mono=True))
@@ -421,8 +430,8 @@ class Application(tk.Tk):
     def _panneau_cascade(self, parent):
         p = Panneau(parent, "Cascade")
         p.pack(fill="x")
-        tk.Label(p.entete, text="  clic = fréquence d'émission · les indicatifs décodés "
-                 "s'affichent à leur fréquence", bg=C["panneau"], fg=C["faible"],
+        tk.Label(p.entete, text="  clic = RX (vert) · Maj + clic = TX (rouge) · Ctrl + clic "
+                 "ou clic droit = les deux", bg=C["panneau"], fg=C["faible"],
                  font=police(8)).pack(side="left")
         tk.Label(p.entete, text="Contraste", bg=C["panneau"], fg=C["doux"],
                  font=police(8)).pack(side="right")
@@ -433,7 +442,10 @@ class Application(tk.Tk):
         self.cv_casc.pack(fill="x")
         self.img_casc = tk.PhotoImage(width=self.casc_l, height=self.casc_h)
         self.cv_casc.create_image(0, 0, image=self.img_casc, anchor="nw", tags="img")
-        self.cv_casc.bind("<Button-1>", self._clic_cascade)
+        self.cv_casc.bind("<Button-1>", lambda e: self._clic_cascade(e, "rx"))
+        self.cv_casc.bind("<Shift-Button-1>", lambda e: self._clic_cascade(e, "tx"))
+        self.cv_casc.bind("<Control-Button-1>", lambda e: self._clic_cascade(e, "les2"))
+        self.cv_casc.bind("<Button-3>", lambda e: self._clic_cascade(e, "les2"))
         self.cv_casc.bind("<Configure>", self._taille_cascade)
 
     def _taille_cascade(self, ev):
@@ -467,13 +479,20 @@ class Application(tk.Tk):
     def _dessiner_reperes(self):
         cv = self.cv_casc
         cv.delete("repere")
-        fa = float(self.cfg["f_audio"])
         larg = 1.2 * FS / SOUS_MODES[self.cfg["sous_mode"]][1]
-        x0, x1 = self._x_de_f(fa - larg / 2), self._x_de_f(fa + larg / 2)
-        cv.create_rectangle(x0, 2, x1, self.casc_h - 1, outline=C["rouge"], width=2,
-                            tags="repere")
-        cv.create_text(x1 + 4, 10, text="TX", anchor="w", fill=C["rouge"],
-                       font=police(8, True), tags="repere")
+        # comme WSJT-X : RX en vert, TX en rouge (deux traits = largeur du signal)
+        for cle, nom, coul, decal in (("f_rx", "RX", C["vert"], 0), ("f_audio", "TX", C["rouge"], 1)):
+            fc = float(self.cfg[cle])
+            x0, x1 = self._x_de_f(fc - larg / 2), self._x_de_f(fc + larg / 2)
+            if x1 - x0 < 6:                    # R60 : signal étroit, traits écartés pour la lisibilité
+                xm = (x0 + x1) / 2
+                x0, x1 = xm - 3, xm + 3
+            for x in (x0, x1):
+                cv.create_line(x, 0, x, self.casc_h, fill=coul, width=2, tags="repere")
+            cv.create_rectangle(x0, self.casc_h, x1 + 1, self.casc_h + 5, fill=coul, outline="",
+                                tags="repere")
+            cv.create_text(x1 + 4, 8 + 12 * decal, text=nom, anchor="w", fill=coul,
+                           font=police(8, True), tags="repere")
         maintenant = time.time()
         periode = SOUS_MODES[self.cfg["sous_mode"]][0]
         for f, ind, t, moi in self.etiquettes_casc:
@@ -491,12 +510,19 @@ class Application(tk.Tk):
             cv.create_line(x, 14, x, self.casc_h - 1, fill=C["vert"], dash=(2, 3),
                            tags="repere")
 
-    def _clic_cascade(self, ev):
-        if ev.y > self.casc_h:
+    def _clic_cascade(self, ev, quoi):
+        if ev.y > self.casc_h + 18:
             return
         f = CASC_FMIN + ev.x / self.casc_l * (CASC_FMAX - CASC_FMIN)
-        self.cfg["f_audio"] = int(round(f / 10) * 10)
+        f = int(min(2700, max(300, round(f / 10) * 10)))
+        if quoi in ("rx", "les2"):
+            self.cfg["f_rx"] = f
+        if quoi in ("tx", "les2"):
+            self.cfg["f_audio"] = f
         self._maj_fa()
+        if self.filtre == "rx":
+            self.choisir_filtre("rx")
+        return "break"
 
     # ---------------------------------------------------------------- commandes TX
     def _panneau_commandes(self, parent):
@@ -576,7 +602,7 @@ class Application(tk.Tk):
     def _panneau_activite(self, parent):
         p = Panneau(parent, "Activité bande")
         self.p_filtres = {}
-        for cle, nom in (("tous", "Tous"), ("cq", "CQ"), ("moi", "Pour moi")):
+        for cle, nom in (("tous", "Tous"), ("cq", "CQ"), ("moi", "Pour moi"), ("rx", "Sur RX")):
             q = Pilule(p.entete, nom, lambda k=cle: self.choisir_filtre(k), hauteur=24,
                        gras=False, fond_parent=C["panneau"])
             q.pack(side="left", padx=(8 if cle == "tous" else 2, 0))
@@ -633,7 +659,8 @@ class Application(tk.Tk):
                            style="vert" if on else "normal")
 
     def _maj_fa(self):
-        self.l_fa.configure(text=f"{int(self.cfg['f_audio'])} Hz")
+        for cle, l in self.l_fa.items():
+            l.configure(text=f"{int(self.cfg[cle])} Hz")
         if hasattr(self, "cv_casc"):
             self._dessiner_reperes()
 
@@ -686,6 +713,22 @@ class Application(tk.Tk):
     def decaler_fa(self, d):
         self.cfg["f_audio"] = int(min(2700, max(300, int(self.cfg["f_audio"]) + d)))
         self._maj_fa()
+
+    def decaler_rx(self, d):
+        self.cfg["f_rx"] = int(min(2700, max(300, int(self.cfg["f_rx"]) + d)))
+        self._maj_fa()
+        if self.filtre == "rx":
+            self.choisir_filtre("rx")
+
+    def tx_sur_rx(self):
+        self.cfg["f_audio"] = int(self.cfg["f_rx"])
+        self._maj_fa()
+
+    def rx_sur_tx(self):
+        self.cfg["f_rx"] = int(self.cfg["f_audio"])
+        self._maj_fa()
+        if self.filtre == "rx":
+            self.choisir_filtre("rx")
 
     def choisir_filtre(self, k):
         self.filtre = k
@@ -806,11 +849,15 @@ class Application(tk.Tk):
         self.seq.arreter()
         self._appliquer_seq("arrêt demandé")
 
-    def repondre(self, texte, snr, n_periode):
+    def repondre(self, texte, snr, n_periode, f=None):
         mots = texte.split()
         moi = self.cfg["indicatif"].upper()
         if len(mots) < 2 or mots[1] in (moi, "<...>"):
             return
+        if f is not None:
+            # comme WSJT-X : le RX (vert) se place sur la station ; le TX ne bouge pas
+            self.cfg["f_rx"] = int(round(f))
+            self._maj_fa()
         dx = mots[1]
         self.v_dx.set(dx)
         self.v_rep.set(int(snr))
@@ -1068,6 +1115,10 @@ class Application(tk.Tk):
             return
         if self.filtre == "moi" and not (d["moi"] or d["tx"]):
             return
+        if self.filtre == "rx":
+            larg = 1.2 * FS / SOUS_MODES[self.cfg["sous_mode"]][1]
+            if abs(d["f"] - float(self.cfg["f_rx"])) > max(15.0, larg):
+                return
         tag = ("tx",) if d["tx"] else ("moi",) if d["moi"] else ("cq",) if d["cq"] else ()
         if d["tx"]:
             vals = (d["utc"], "TX", "", f"{d['f']:.0f}", d["texte"])
@@ -1123,7 +1174,7 @@ class Application(tk.Tk):
             return
         d = next((x for x in reversed(self.decodes) if x["texte"] == texte and not x["tx"]), None)
         if d:
-            self.repondre(texte, d["snr"], d["n"])
+            self.repondre(texte, d["snr"], d["n"], d["f"])
 
     def _double_clic_station(self, ev):
         ind = self.tv_st.focus()
@@ -1133,7 +1184,7 @@ class Application(tk.Tk):
                   if not x["tx"] and len(x["texte"].split()) >= 2
                   and x["texte"].split()[1] == ind), None)
         if d:
-            self.repondre(d["texte"], d["snr"], d["n"])
+            self.repondre(d["texte"], d["snr"], d["n"], d["f"])
 
     # ================================================================== rafraîchissements
     def _fenetre_casc(self, n):
@@ -1179,7 +1230,7 @@ class Application(tk.Tk):
             self.cv_niv.delete("all")
             u = min(1.0, max(0.0, (niv + 60) / 60))
             coul = C["vert"] if niv < -12 else C["ambre"] if niv < -4 else C["rouge"]
-            self.cv_niv.create_rectangle(0, 0, 140 * u, 8, fill=coul, outline="")
+            self.cv_niv.create_rectangle(0, 0, 100 * u, 8, fill=coul, outline="")
             self.l_niv.configure(text=f"{niv:5.0f} dB" if niv > -150 else "  — dB")
         except (tk.TclError, ValueError):
             pass
