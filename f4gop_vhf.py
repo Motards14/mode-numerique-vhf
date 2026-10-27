@@ -37,7 +37,7 @@ try:
 except Exception:                                  # pas de carte son (tests)
     sd = None
 
-VERSION = "2.1"
+VERSION = "2.2"
 RETARD_MAX_TX = 1.2           # départ d'émission le plus tardif (s)
 TAMPON_S = 130                # secondes d'audio gardées en mémoire
 CASC_FMIN, CASC_FMAX = 200.0, 2800.0

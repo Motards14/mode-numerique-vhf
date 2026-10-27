@@ -229,8 +229,12 @@ def open_port(cfg, port=None):
     lines = {}
     for line in ("dtr", "rts"):
         v = cfg.get(line)
-        if v in ("high", "low") and not (line == "rts" and hs == "hardware"):
-            lines[line] = v == "high"
+        if line == "rts" and hs == "hardware":
+            continue
+        # F4GOP VHF : lignes BASSES par défaut (« — » dans la fenêtre), sinon un poste réglé en
+        # « USB SEND = DTR/RTS » (IC-9700, IC-705…) passerait en émission à l'ouverture du port.
+        # Seul « Haut » choisi dans « Forcer les lignes » les met à 1.
+        lines[line] = v == "high"
     # PTT par DTR / RTS sur ce même port : la ligne reste basse dès l'ouverture (sinon le poste
     # passerait en émission au lancement du programme)
     pl = ptt_line_on(cfg, port)
@@ -1002,7 +1006,8 @@ class HamlibRig(RigctlRig):
             conf.append(f"serial_handshake={hs}")
         pl = ptt_line_on(cfg, port)
         for line in ("dtr", "rts"):
-            v = {"high": "ON", "low": "OFF"}.get(cfg.get(line))
+            # F4GOP VHF : lignes basses par défaut (voir open_port), hautes seulement si demandé
+            v = "ON" if cfg.get(line) == "high" else "OFF"
             # Hamlib refuse de démarrer si on force la ligne du PTT, ou RTS avec le contrôle matériel
             if v and line != pl and not (line == "rts" and hs == "Hardware"):
                 conf.append(f"{line}_state={v}")
