@@ -27,6 +27,13 @@ plus vite sur les côtés :
 
 ![Spectre MSK et GMSK](captures/spectre_gmsk.png)
 
+Depuis la v2.5, la cascade a une **échelle de couleurs automatique**
+(du bruit aux signaux les plus forts, mesurés en continu) et une fenêtre
+de Blackman-Harris : un signal très fort (poste à côté, +60 dB) n'est
+plus un gros bloc rouge, et les signaux faibles restent visibles.
+
+![Cascade automatique](captures/cascade_auto.png)
+
 Pendant l'émission, la cascade ne dessine plus notre propre signal
 (entendu à un niveau énorme par le récepteur), comme WSJT-X.
 

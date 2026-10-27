@@ -37,7 +37,7 @@ try:
 except Exception:                                  # pas de carte son (tests)
     sd = None
 
-VERSION = "2.4"
+VERSION = "2.5"
 RETARD_MAX_TX = 1.2           # départ d'émission le plus tardif (s)
 TAMPON_S = 130                # secondes d'audio gardées en mémoire
 CASC_FMIN, CASC_FMAX = 200.0, 2800.0
@@ -1136,11 +1136,21 @@ class Application(tk.Tk):
             self.repondre(d["texte"], d["snr"], d["n"])
 
     # ================================================================== rafraîchissements
+    def _fenetre_casc(self, n):
+        if getattr(self, "_fen_n", 0) != n:
+            k = np.arange(n) / (n - 1)
+            self._fen = (0.35875 - 0.48829 * np.cos(2 * np.pi * k) + 0.14128 * np.cos(4 * np.pi * k)
+                         - 0.01168 * np.cos(6 * np.pi * k))
+            self._fen_n = n
+        return self._fen
+
     def _rafraichir_cascade(self):
         try:
             x = self.tampon.derniers(16384)
             if x is not None:
-                spec = np.abs(np.fft.rfft(x * np.hanning(x.size))) ** 2
+                # fenêtre de Blackman-Harris (lobes à −92 dB) : un signal très fort ne
+                # « bave » plus sur les fréquences voisines comme avec la fenêtre de Hann
+                spec = np.abs(np.fft.rfft(x * self._fenetre_casc(x.size))) ** 2
                 f = np.fft.rfftfreq(x.size, 1 / FS)
                 bords = np.linspace(CASC_FMIN, CASC_FMAX, self.casc_l + 1)
                 idx = np.searchsorted(f, bords)
@@ -1148,7 +1158,14 @@ class Application(tk.Tk):
                 ligne = np.maximum.reduceat(spec, idx[:-1])
                 db = 10 * np.log10(ligne + 1e-20)
                 ref = np.median(db)
-                val = np.clip((db - ref + 2) * float(self.v_contraste.get()), 0, 255)
+                # échelle automatique : du bruit (bleu nuit) aux signaux les plus forts
+                # (rouge), mesurés en continu ; montée rapide, descente lente
+                haut = float(np.percentile(db - ref, 99.7))
+                dyn = getattr(self, "_casc_dyn", 25.0)
+                dyn = 0.5 * dyn + 0.5 * haut if haut > dyn else 0.97 * dyn + 0.03 * haut
+                self._casc_dyn = dyn = min(90.0, max(18.0, dyn))
+                u = np.clip((db - ref + 3) / (dyn + 3), 0, 1) ** 0.85
+                val = np.clip(u * 255 * float(self.v_contraste.get()) / 12, 0, 255)
                 if self.en_cours:
                     # pendant notre émission, le récepteur entend notre propre signal à un
                     # niveau énorme : on ne le dessine pas (comme WSJT-X)
